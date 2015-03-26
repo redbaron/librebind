@@ -42,9 +42,18 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 
 	memcpy(&rebindaddr, addr, addrlen);
         rebindaddr.sin_port=htons(to_port);
-        fprintf(stderr, "Rebound port from %d to %d\n", from_port, to_port);
+        
+        int res = _bind(sockfd, (struct sockaddr*) &rebindaddr, sizeof(rebindaddr));
+        if (to_port == 0) { // to_port == 0 means that OS chooses available port for us, looking up real value
+            socklen_t rebindaddrlen = sizeof(rebindaddr);
+            if (getsockname(sockfd, (struct sockaddr*) &rebindaddr, &rebindaddrlen)) {
+                perror("Port was rebound, but error occured during determining final value");
+            }
+            to_port = ntohs(rebindaddr.sin_port);
+        }
+        fprintf(stderr, "librebind: Rebound port from %d to %d\n", from_port, to_port);
         fflush(stderr);
-        return _bind(sockfd, (struct sockaddr*) &rebindaddr, sizeof(rebindaddr));
+        return res;
 fallback: 
 	return _bind(sockfd, addr, addrlen);
 }
